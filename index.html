@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1929 Stock Market Simulator - Enhanced</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #27ae60;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --paper: #fdfbf7;
+            --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: var(--font-main);
+            background-color: #dcdcdc;
+            color: #333;
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Ticker Tape Animation */
+        .ticker-container {
+            width: 100%;
+            overflow: hidden;
+            background-color: #000;
+            color: #0f0;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            white-space: nowrap;
+            padding: 5px 0;
+            border-bottom: 2px solid #555;
+        }
+        .ticker-content {
+            display: inline-block;
+            animation: ticker 30s linear infinite;
+        }
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* Utility Classes */
+        .text-green { color: var(--accent); font-weight: bold; }
+        .text-red { color: var(--danger); font-weight: bold; }
+        .hidden { display: none !important; }
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-buy { background: var(--accent); color: white; }
+        .btn-sell { background: var(--danger); color: white; }
+        .btn-warn { background: #f39c12; color: white; }
+        /* New Max Button */
+        .btn-max {
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            background: #7f8c8d;
+            color: white;
+            margin-right: 2px;
+            border-radius: 3px;
+        }
+        
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+        /* Login Screen */
+        #login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #2c3e50, #000);
+            color: white;
+            padding: 20px;
+        }
+        .login-card {
+            background: white;
+            color: #333;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .login-card input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Main App Layout */
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--paper);
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            width: 100%;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .date-display {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            background: #000;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            white-space: nowrap;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: var(--secondary);
+            color: white;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        @media (min-width: 768px) {
+            .stats-bar { grid-template-columns: repeat(4, 1fr); font-size: 0.9rem; }
+        }
+        .stat-box { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px; }
+        .stat-box strong { display: block; font-size: 0.7rem; opacity: 0.8; text-transform: uppercase; }
+        .stat-value { font-size: 1rem; font-family: var(--font-mono); }
+
+        /* Wire Control Bar */
+        .wire-bar {
+            background: #ffeaa7;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #fdcb6e;
+        }
+        .wire-input {
+            padding: 8px;
+            border: 2px solid #fdcb6e;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            width: 150px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Navigation */
+        nav {
+            background: #bdc3c7;
+            overflow-x: auto; 
+        }
+        .nav-tabs {
+            display: flex;
+            list-style: none;
+            min-width: max-content; 
+        }
+        .nav-tabs li {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .nav-tabs li.active {
+            background: var(--paper);
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+        }
+
+        /* Content Areas */
+        main {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            overflow-x: hidden; 
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto; 
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 0.9rem;
+        }
+        th { background: #eee; position: sticky; top: 0; }
+        .ticker { font-family: var(--font-mono); font-weight: bold; color: var(--primary); }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .news-paper {
+            background: #f4e4bc;
+            color: #2c2c2c;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 25px;
+            border: 1px solid #a89f81;
+            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            font-family: 'Georgia', serif;
+            text-align: center;
+            position: relative;
+        }
+        .news-headline { font-size: 1.8rem; font-weight: bold; line-height: 1.1; margin-bottom: 10px; text-transform: uppercase;}
+        .news-body { font-size: 1rem; line-height: 1.6; text-align: justify; margin-bottom: 20px; }
+
+        /* Controls */
+        .trade-controls { display: flex; gap: 2px; align-items: center; }
+        .trade-input { width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+
+        /* Alerts */
+        #alert-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: #333;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 4px;
+            text-align: center;
+            z-index: 2000;
+        }
+
+        .reflection-card {
+            background: white;
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Score Card and Fate */
+        .score-card {
+            background: #fff;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .big-score { font-size: 3rem; font-family: var(--font-mono); color: var(--primary); margin: 20px 0; }
+        
+        .fate-badge {
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: white;
+            margin-top: 15px;
+            display: inline-block;
+            font-size: 1.2rem;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+        .fate-ruin { background-color: #c0392b; }
+        .fate-struggle { background-color: #f39c12; }
+        .fate-rich { background-color: #27ae60; }
+
+        /* Teacher Mode Table */
+        .teacher-table tr:nth-child(even) { background-color: #f2f2f2; }
+        .code-cell { font-family: var(--font-mono); font-weight: bold; color: #d35400; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h1>Wall Street 1927</h1>
+            <p>Grade 11 History Simulation</p>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+            <input type="text" id="team-name" placeholder="Enter Team Name">
+            <button class="btn btn-primary" style="width:100%" onclick="app.login()">Start Trading</button>
+            <p style="margin-top: 15px; font-size: 0.8rem; color: #666;">Starting Capital: $10,000</p>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-container" class="hidden">
+        <!-- New Ticker Tape -->
+        <div class="ticker-container">
+            <div class="ticker-content" id="ticker-tape">RCA $200 ▲ F $150 ▲ GE $130 ▲ X $180 ▲</div>
+        </div>
+
+        <header>
+            <div>
+                <h2 id="display-team-name" style="font-size: 1.2rem;">Team Name</h2>
+                <span style="font-size: 0.75rem; opacity: 0.8">1920s Simulation</span>
+            </div>
+            <div class="date-display" id="display-date">JAN 1927</div>
+        </header>
+
+        <!-- The Wire Control Bar -->
+        <div class="wire-bar" id="wire-bar">
+            <span>WIRE:</span>
+            <input type="text" id="code-input" class="wire-input" placeholder="ENTER CODE">
+            <button class="btn btn-primary" onclick="app.submitCode()">ADVANCE</button>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-box"><strong>CASH</strong><div class="stat-value text-green" id="stat-cash">$10,000</div></div>
+            <div class="stat-box"><strong>PORTFOLIO</strong><div class="stat-value" id="stat-portfolio">$0</div></div>
+            <div class="stat-box"><strong>DEBT</strong><div class="stat-value text-red" id="stat-debt">$0</div></div>
+            <div class="stat-box"><strong>NET WORTH</strong><div class="stat-value" id="stat-networth">$10,000</div></div>
+        </div>
+
+        <nav>
+            <ul class="nav-tabs">
+                <li onclick="app.switchTab('market')" id="tab-market" class="active">Market</li>
+                <li onclick="app.switchTab('portfolio')" id="tab-portfolio">Portfolio</li>
+                <li onclick="app.switchTab('reflection')" id="tab-reflection">Log</li>
+                <li onclick="app.switchTab('score')" id="tab-score">Final Score</li>
+                <li onclick="app.switchTab('teacher')" id="tab-teacher" style="margin-left:auto; color:#c0392b">Teacher</li>
+            </ul>
+        </nav>
+
+        <main id="view-market">
+            <h3>Current Prices</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Symbol</th><th>Company</th><th>Price</th><th>Trend</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="market-table-body"></tbody>
+                </table>
+            </div>
+        </main>
+
+        <main id="view-portfolio" class="hidden">
+            <h3>Your Holdings</h3>
+            <div id="margin-warning" class="hidden" style="background:#ffdddd; color:#c0392b; padding:10px; margin-bottom:10px; border:1px solid #c0392b; font-weight:bold; font-size: 0.9rem;">⚠ MARGIN WARNING: Equity low!</div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Sym</th><th>Shares</th><th>Avg</th><th>Price</th><th>Value</th><th>G/L</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="portfolio-table-body"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #eee; border-radius: 4px;">
+                <h4>Margin Account</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div>Debt: <strong id="margin-debt-display">$0</strong></div>
+                    <div>Power: <strong id="margin-available-display">$5,000</strong></div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" onclick="app.repayLoan(500)">Repay $500</button>
+                    <button class="btn btn-primary" onclick="app.repayLoan('all')">Repay All</button>
+                </div>
+            </div>
+        </main>
+
+        <main id="view-reflection" class="hidden">
+            <h3>History Log</h3>
+            <div id="reflection-log"></div>
+        </main>
+
+        <main id="view-score" class="hidden">
+            <h3>Team Scoreboard</h3>
+            <p>Show this screen to your teacher to be ranked.</p>
+            <div class="score-card">
+                <h4 id="score-team-name">TEAM NAME</h4>
+                <p>Current Net Worth</p>
+                <div class="big-score" id="score-val">$10,000</div>
+                <p id="score-date">Date: Jan 1927</p>
+                
+                <!-- NEW FATE SECTION -->
+                <div id="fate-container">
+                    <span id="fate-badge" class="fate-badge">Fate Loading...</span>
+                    <p id="fate-desc" style="margin-top:10px; font-style: italic;">Wait for end of game...</p>
+                </div>
+            </div>
+        </main>
+
+        <main id="view-teacher" class="hidden">
+            <div id="teacher-login">
+                <h3>Teacher Access</h3>
+                <p>Enter the password to see the game codes.</p>
+                <input type="password" id="teacher-pw" placeholder="Password" style="padding:10px; width:200px;">
+                <button class="btn btn-primary" onclick="app.teacherLogin()">Unlock</button>
+            </div>
+            <div id="teacher-panel" class="hidden">
+                <div class="admin-panel">
+                    <h3>Teacher Command Center</h3>
+                    <p><strong>Instructions:</strong> Read the code out loud. Students enter it in the yellow box.</p>
+                    <hr>
+                    <table class="teacher-table" style="width:100%; margin-top:10px;">
+                        <thead>
+                            <tr><th>Turn</th><th>Date</th><th>CODE</th><th>Market Event</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1</td><td>July 1927</td><td class="code-cell">EASY</td><td>Rate Cut (Boom)</td></tr>
+                            <tr><td>2</td><td>Jan 1928</td><td class="code-cell">BULL</td><td>Strong Growth</td></tr>
+                            <tr><td>3</td><td>July 1928</td><td class="code-cell">RALLY</td><td>Market Peak</td></tr>
+                            <tr><td>4</td><td>Jan 1929</td><td class="code-cell">MANIA</td><td>Inauguration</td></tr>
+                            <tr><td>5</td><td>July 1929</td><td class="code-cell">PEAK</td><td>Summer Jitters</td></tr>
+                            <tr><td>6</td><td>Oct 1929</td><td class="code-cell">CRASH</td><td>The Great Crash</td></tr>
+                            <tr><td>7</td><td>Jan 1930</td><td class="code-cell">HOPE</td><td>False Recovery</td></tr>
+                            <tr><td>8</td><td>July 1930</td><td class="code-cell">SLIDE</td><td>Unemployment Up</td></tr>
+                            <tr><td>9</td><td>Jan 1931</td><td class="code-cell">PANIC</td><td>Bank Failures</td></tr>
+                            <tr><td>10</td><td>July 1931</td><td class="code-cell">GLOBAL</td><td>Europe Crisis</td></tr>
+                            <tr><td>11</td><td>Jan 1932</td><td class="code-cell">LOW</td><td>Market Bottom</td></tr>
+                            <tr><td>12</td><td>Nov 1932</td><td class="code-cell">VOTE</td><td>Election / End</td></tr>
+                        </tbody>
+                    </table>
+                    <div style="margin-top:20px;">
+                        <button class="btn btn-sell" onclick="app.resetGame()">Reset My Device Data</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- NEWS MODAL -->
+    <div id="news-modal" class="modal-overlay hidden">
+        <div class="news-paper">
+            <div class="news-header">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <span>THE FINANCIAL TIMES</span><span style="font-size:0.8rem">2¢</span>
+                </div>
+                <hr style="border-top: 2px solid #333; margin: 5px 0;">
+                <div class="news-headline" id="news-title">MARKET SOARS!</div>
+                <div class="news-date" id="news-date">January 1, 1927</div>
+            </div>
+            <div class="news-body" id="news-content"></div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="app.closeNews()">Continue</button>
+        </div>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        const CONFIG = { 
+            startCash: 10000, 
+            marginLimit: 5000, 
+            marginCallRatio: 0.50,
+            costOfLiving: 200 // New Mechanic
+        };
+
+        const TIMELINE = [
+            { date: "Jan 1927", code: "START", multiplier: 1.05, title: "Coolidge Prosperity", news: "President Coolidge affirms that business is booming. Radio and Automobile industries are leading a new era of wealth for all Americans." },
+            { date: "July 1927", code: "EASY", multiplier: 1.10, title: "Easy Money", news: "The Federal Reserve cuts interest rates. Loans are cheap! Ordinary citizens are flocking to Wall Street to buy stocks on margin." },
+            { date: "Jan 1928", code: "BULL", multiplier: 1.15, title: "The Bull Run", news: "Stocks continue to climb. RCA and Ford report record profits. Optimism is at an all-time high." },
+            { date: "July 1928", code: "RALLY", multiplier: 1.20, title: "Everyone's a Winner", news: "Shoeshine boys and taxi drivers are giving stock tips. It seems impossible to lose money. Why work when you can trade?" },
+            { date: "Jan 1929", code: "MANIA", multiplier: 1.25, title: "The Peak of Mania", news: "Inauguration approaches for Herbert Hoover. Economists predict poverty will be banished from this nation forever." },
+            { date: "July 1929", code: "PEAK", multiplier: 1.05, title: "Summer Jitters", news: "Industrial production is slowing slightly, but the stock market ignores the data and keeps rising. Some experts are quietly selling." },
+            { date: "Oct 1929", code: "CRASH", multiplier: 0.40, title: "MARKET CRASH!", news: "Black Tuesday! Panic selling hits Wall Street. Billions of dollars in value evaporated in hours. Brokers are calling in margin loans immediately." },
+            { date: "Jan 1930", code: "HOPE", multiplier: 0.90, title: "False Hope", news: "The market has stabilized slightly after the crash. President Hoover assures the public 'the fundamental business of the country is sound'." },
+            { date: "July 1930", code: "SLIDE", multiplier: 0.80, title: "The Slide Continues", news: "Unemployment is rising. Consumers are stopping spending. Companies are cutting wages. Stock prices drift lower." },
+            { date: "Jan 1931", code: "PANIC", multiplier: 0.70, title: "Banking Crisis", news: "Banks in the Midwest are collapsing as farmers default on loans. Panic spreads. People are hoarding cash under mattresses." },
+            { date: "July 1931", code: "GLOBAL", multiplier: 0.85, title: "Global Depression", news: "The economic crisis has spread to Europe. Trade has halted. US Steel operates at 12% capacity." },
+            { date: "Jan 1932", code: "LOW", multiplier: 0.80, title: "Rock Bottom", news: "Unemployment hits 25%. Shantytowns named 'Hoovervilles' appear in parks. Stocks are penny dreadfuls compared to 1929." },
+            { date: "Nov 1932", code: "VOTE", multiplier: 1.00, title: "A New Deal?", news: "Franklin D. Roosevelt is elected President promising a 'New Deal'. The simulation ends. Did your portfolio survive?" }
+        ];
+
+        const INITIAL_STOCKS = [
+            { symbol: "RCA", name: "Radio Corp", sector: "Tech", price: 200, volatility: 0.3 }, 
+            { symbol: "F", name: "Ford", sector: "Auto", price: 150, volatility: 0.15 },
+            { symbol: "GE", name: "Gen Electric", sector: "Ind.", price: 130, volatility: 0.1 },
+            { symbol: "X", name: "U.S. Steel", sector: "Steel", price: 180, volatility: 0.15 },
+            { symbol: "M", name: "Montgomery", sector: "Retail", price: 80, volatility: 0.1 },
+            { symbol: "UP", name: "Union Pac.", sector: "Rail", price: 110, volatility: 0.05 }, 
+            { symbol: "NCB", name: "Nat City Bk", sector: "Bank", price: 250, volatility: 0.2 },
+            { symbol: "GST", name: "Goldman Tr", sector: "Spec.", price: 100, volatility: 0.4 },
+            { symbol: "HMS", name: "Homestake", sector: "Gold", price: 60, volatility: 0.1 }, 
+            { symbol: "AT", name: "Am. Tobacco", sector: "Def.", price: 90, volatility: 0.05 }, 
+            { symbol: "KO", name: "Coca-Cola", sector: "Staple", price: 85, volatility: 0.08 }
+        ];
+
+        window.app = {
+            state: {
+                teamName: "", turn: 0, cash: CONFIG.startCash, debt: 0,
+                portfolio: {}, stocks: [], history: []
+            },
+
+            init: function() {
+                const saved = localStorage.getItem('stockSim_v4');
+                if (saved) {
+                    this.state = JSON.parse(saved);
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('app-container').classList.remove('hidden');
+                    this.render();
+                } else {
+                    this.state.stocks = JSON.parse(JSON.stringify(INITIAL_STOCKS));
+                }
+            },
+
+            login: function() {
+                const name = document.getElementById('team-name').value;
+                if (!name) return alert("Please enter a team name!");
+                this.state.teamName = name;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                this.showNews();
+                this.save();
+                this.render();
+            },
+
+            save: function() { localStorage.setItem('stockSim_v4', JSON.stringify(this.state)); },
+
+            // --- TEACHER ACTIONS ---
+            teacherLogin: function() {
+                const pw = document.getElementById('teacher-pw').value;
+                if (pw === "teacher" || pw === "admin") {
+                    document.getElementById('teacher-login').classList.add('hidden');
+                    document.getElementById('teacher-panel').classList.remove('hidden');
+                } else {
+                    alert("Incorrect Password");
+                }
+            },
+
+            submitCode: function() {
+                const input = document.getElementById('code-input').value.toUpperCase().trim();
+                const nextIndex = this.state.turn + 1;
+
+                if (nextIndex >= TIMELINE.length) return alert("Simulation Finished!");
+
+                const requiredCode = TIMELINE[nextIndex].code;
+                
+                if (input === requiredCode) {
+                    this.nextTurn();
+                    document.getElementById('code-input').value = "";
+                } else {
+                    this.showAlert("INVALID CODE. Wait for teacher.");
+                }
+            },
+
+            // --- GAME ENGINE ---
+            nextTurn: function() {
+                // Cost of Living (New Mechanic)
+                this.state.cash -= CONFIG.costOfLiving;
+
+                // Archive History
+                let pVal = 0;
+                this.state.stocks.forEach(s => {
+                    const o = this.state.portfolio[s.symbol];
+                    if (o) pVal += o.shares * s.price;
+                });
+                const net = this.state.cash + pVal - this.state.debt;
+                this.state.history.unshift({ date: TIMELINE[this.state.turn].date, netWorth: net, note: "Turn End" });
+
+                // Advance
+                this.state.turn++;
+                const event = TIMELINE[this.state.turn];
+
+                // Update Prices
+                this.state.stocks.forEach(s => {
+                    const rnd = 1 + (Math.random() * s.volatility * 2 - s.volatility);
+                    let mult = event.multiplier;
+
+                    if (s.sector === 'Gold' && mult < 1) mult = 1.3; 
+                    else if (s.sector === 'Def.' && mult < 1) mult = 0.9;
+                    else if (mult > 1 && (s.sector === 'Tech' || s.sector === 'Spec.')) mult += 0.1; 
+                    else if (mult < 1 && (s.sector === 'Tech' || s.sector === 'Spec.')) mult -= 0.15; 
+
+                    let np = s.price * mult * rnd;
+                    if (np < 1) np = 1;
+                    s.price = np;
+                });
+
+                // Margin Interest
+                if (this.state.debt > 0) {
+                    const interest = this.state.debt * 0.05;
+                    this.state.debt += interest;
+                    this.showAlert(`Interest (-$${interest.toFixed(0)}) & Living (-$200)`);
+                } else {
+                    this.showAlert(`Cost of Living Deducted (-$200)`);
+                }
+
+                this.save();
+                this.showNews();
+            },
+
+            // --- RENDER & UTILS ---
+            render: function() {
+                document.getElementById('display-team-name').innerText = this.state.teamName;
+                const event = TIMELINE[this.state.turn];
+                document.getElementById('display-date').innerText = event.date;
+
+                let pVal = 0;
+                let tickerHtml = "";
+                this.state.stocks.forEach(s => {
+                    const o = this.state.portfolio[s.symbol];
+                    if (o) pVal += o.shares * s.price;
+                    
+                    // Ticker Logic
+                    const base = INITIAL_STOCKS.find(i => i.symbol === s.symbol).price;
+                    const arrow = s.price >= base ? "▲" : "▼";
+                    tickerHtml += `${s.symbol} $${s.price.toFixed(0)} ${arrow} &nbsp;&nbsp;&nbsp; `;
+                });
+                
+                // Update Ticker
+                document.getElementById('ticker-tape').innerHTML = tickerHtml + tickerHtml; // Double for seamless loop
+
+                const net = this.state.cash + pVal - this.state.debt;
+
+                // Stats
+                document.getElementById('stat-cash').innerText = this.formatMoney(this.state.cash);
+                document.getElementById('stat-portfolio').innerText = this.formatMoney(pVal);
+                document.getElementById('stat-debt').innerText = this.formatMoney(this.state.debt);
+                document.getElementById('stat-networth').innerText = this.formatMoney(net);
+
+                // Market
+                const mb = document.getElementById('market-table-body');
+                mb.innerHTML = '';
+                this.state.stocks.forEach(s => {
+                    const base = INITIAL_STOCKS.find(i => i.symbol === s.symbol).price;
+                    const cls = s.price >= base ? 'text-green' : 'text-red';
+                    mb.innerHTML += `
+                    <tr>
+                        <td class="ticker">${s.symbol}</td>
+                        <td>${s.name}</td>
+                        <td class="${cls}">$${s.price.toFixed(0)}</td>
+                        <td>${this.getTrendArrow(s.price, base)}</td>
+                        <td class="trade-controls">
+                            <input type="number" id="qty-buy-${s.symbol}" class="trade-input" placeholder="#">
+                            <button class="btn btn-max" onclick="app.buyMax('${s.symbol}')">Max</button>
+                            <button class="btn btn-buy" onclick="app.buy('${s.symbol}')">Buy</button>
+                        </td>
+                    </tr>`;
+                });
+
+                // Portfolio
+                const pb = document.getElementById('portfolio-table-body');
+                pb.innerHTML = '';
+                Object.keys(this.state.portfolio).forEach(sym => {
+                    const item = this.state.portfolio[sym];
+                    const s = this.state.stocks.find(x => x.symbol === sym);
+                    const val = item.shares * s.price;
+                    const gl = val - (item.shares * item.avgPrice);
+                    const cls = gl >= 0 ? 'text-green' : 'text-red';
+                    if (item.shares > 0) {
+                        pb.innerHTML += `
+                        <tr>
+                            <td class="ticker">${sym}</td>
+                            <td>${item.shares}</td>
+                            <td>$${item.avgPrice.toFixed(0)}</td>
+                            <td>$${s.price.toFixed(0)}</td>
+                            <td>$${val.toFixed(0)}</td>
+                            <td class="${cls}">$${gl.toFixed(0)}</td>
+                            <td class="trade-controls">
+                                <input type="number" id="qty-sell-${sym}" class="trade-input" placeholder="#">
+                                <button class="btn btn-max" onclick="app.sellMax('${sym}')">Max</button>
+                                <button class="btn btn-sell" onclick="app.sell('${sym}')">Sell</button>
+                            </td>
+                        </tr>`;
+                    }
+                });
+
+                // Margin
+                document.getElementById('margin-debt-display').innerText = this.formatMoney(this.state.debt);
+                const bp = Math.max(0, CONFIG.marginLimit - this.state.debt);
+                document.getElementById('margin-available-display').innerText = this.formatMoney(bp);
+                
+                const tot = this.state.cash + pVal;
+                if (this.state.debt > 0) {
+                    const eq = tot - this.state.debt;
+                    const r = tot > 0 ? (eq / tot) : 0;
+                    if (r < CONFIG.marginCallRatio) document.getElementById('margin-warning').classList.remove('hidden');
+                    else document.getElementById('margin-warning').classList.add('hidden');
+                }
+
+                // Log & Score & Fate
+                document.getElementById('reflection-log').innerHTML = this.state.history.map(h => 
+                    `<div class="reflection-card"><strong>${h.date}</strong>: Net ${this.formatMoney(h.netWorth)}</div>`
+                ).join('');
+                document.getElementById('score-team-name').innerText = this.state.teamName;
+                document.getElementById('score-val').innerText = this.formatMoney(net);
+                document.getElementById('score-date').innerText = "Date: " + event.date;
+
+                // FATE LOGIC
+                const fateBadge = document.getElementById('fate-badge');
+                const fateDesc = document.getElementById('fate-desc');
+                
+                if (this.state.turn >= 6) { // Only show fate after the crash starts
+                    if (net < 0) {
+                        fateBadge.className = "fate-badge fate-ruin";
+                        fateBadge.innerText = "BANKRUPT";
+                        fateDesc.innerText = "You lost everything. You are now living in a Hooverville shanty town.";
+                    } else if (net < 8000) {
+                        fateBadge.className = "fate-badge fate-struggle";
+                        fateBadge.innerText = "STRUGGLING";
+                        fateDesc.innerText = "Times are hard. You are standing in breadlines to survive.";
+                    } else if (net < 15000) {
+                        fateBadge.className = "fate-badge fate-rich";
+                        fateBadge.innerText = "SURVIVOR";
+                        fateDesc.innerText = "You made it through with your savings intact.";
+                    } else {
+                        fateBadge.className = "fate-badge fate-rich";
+                        fateBadge.innerText = "TYCOON";
+                        fateDesc.innerText = "You profited from the crash! You just bought a mansion for pennies.";
+                    }
+                } else {
+                    fateBadge.innerText = "Pending...";
+                    fateBadge.className = "fate-badge";
+                    fateDesc.innerText = "Market crash hasn't happened yet. Stay tuned.";
+                }
+            },
+
+            // --- TRADE ACTIONS ---
+            buy: function(sym) {
+                const qty = parseInt(document.getElementById(`qty-buy-${sym}`).value);
+                if (!qty || qty < 1) return;
+                this.executeBuy(sym, qty);
+            },
+            
+            // New Max Buy Logic
+            buyMax: function(sym) {
+                const s = this.state.stocks.find(x => x.symbol === sym);
+                const maxCash = this.state.cash + (CONFIG.marginLimit - this.state.debt);
+                const maxShares = Math.floor(maxCash / s.price);
+                if (maxShares > 0) {
+                    document.getElementById(`qty-buy-${sym}`).value = maxShares;
+                }
+            },
+
+            executeBuy: function(sym, qty) {
+                const s = this.state.stocks.find(x => x.symbol === sym);
+                const cost = s.price * qty;
+                const max = this.state.cash + (CONFIG.marginLimit - this.state.debt);
+                if (cost > max) return alert("Not enough Buying Power!");
+                
+                let cashUsed = Math.min(this.state.cash, cost);
+                this.state.cash -= cashUsed;
+                this.state.debt += (cost - cashUsed);
+
+                if (!this.state.portfolio[sym]) this.state.portfolio[sym] = { shares: 0, avgPrice: 0 };
+                const p = this.state.portfolio[sym];
+                const oldVal = p.shares * p.avgPrice;
+                p.shares += qty;
+                p.avgPrice = (oldVal + cost) / p.shares;
+
+                this.showAlert(`Bought ${qty} ${sym}`);
+                this.save(); this.render();
+            },
+
+            sell: function(sym) {
+                const qty = parseInt(document.getElementById(`qty-sell-${sym}`).value);
+                const p = this.state.portfolio[sym];
+                if (!qty || qty < 1 || qty > p.shares) return alert("Invalid Qty");
+                this.executeSell(sym, qty);
+            },
+
+            // New Max Sell Logic
+            sellMax: function(sym) {
+                const p = this.state.portfolio[sym];
+                if(p && p.shares > 0) {
+                    document.getElementById(`qty-sell-${sym}`).value = p.shares;
+                }
+            },
+
+            executeSell: function(sym, qty) {
+                const p = this.state.portfolio[sym];
+                const s = this.state.stocks.find(x => x.symbol === sym);
+                const val = qty * s.price;
+                this.state.cash += val;
+                p.shares -= qty;
+                if (p.shares === 0) delete this.state.portfolio[sym];
+                this.showAlert(`Sold ${qty} ${sym}`);
+                this.save(); this.render();
+            },
+
+            repayLoan: function(amt) {
+                if (this.state.debt <= 0) return alert("No Debt.");
+                let pay = amt === 'all' ? this.state.debt : amt;
+                if (pay > this.state.cash) return alert("Need Cash.");
+                this.state.cash -= pay;
+                this.state.debt -= pay;
+                this.save(); this.render();
+            },
+
+            // --- UI HELPERS ---
+            showNews: function() {
+                const e = TIMELINE[this.state.turn];
+                document.getElementById('news-title').innerText = e.title;
+                document.getElementById('news-date').innerText = e.date;
+                document.getElementById('news-content').innerText = e.news;
+                document.getElementById('news-modal').classList.remove('hidden');
+            },
+            closeNews: function() { document.getElementById('news-modal').classList.add('hidden'); },
+            switchTab: function(t) {
+                document.querySelectorAll('main').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.nav-tabs li').forEach(el => el.classList.remove('active'));
+                document.getElementById(`view-${t}`).classList.remove('hidden');
+                document.getElementById(`tab-${t}`).classList.add('active');
+            },
+            formatMoney: function(n) { return '$' + n.toLocaleString('en-US', {maximumFractionDigits:0}); },
+            getTrendArrow: function(c, b) { return c > b*1.5 ? "🚀" : c > b ? "📈" : c < b*0.5 ? "📉" : c < b ? "🔻" : "➖"; },
+            showAlert: function(m) {
+                const d = document.createElement('div'); d.id='alert-box'; d.innerText=m; document.body.appendChild(d);
+                setTimeout(()=>d.remove(), 2000);
+            },
+            resetGame: function() {
+                if(confirm("Reset?")) { localStorage.removeItem('stockSim_v4'); location.reload(); }
+            }
+        };
+        window.app.init();
+    </script>
+</body>
+</html>
